@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Asteroids clone built with plain HTML5 Canvas and vanilla ES6+ JavaScript. No build tools, no bundler, no package manager, no dependencies, no tests. The entire game logic lives in a single file: `game.js` (~420 lines). `index.html` just sets up an 800x600 canvas and loads `game.js` as a plain script tag.
+Asteroids clone built with plain HTML5 Canvas and vanilla ES6+ JavaScript. No build tools, no bundler, no package manager, no dependencies, no tests. The entire game logic lives in a single file: `game.js` (~480 lines). `index.html` just sets up an 800x600 canvas and loads `game.js` as a plain script tag.
 
 ## Running
 
@@ -18,9 +18,10 @@ There is no build step, lint config, or test suite — changes to `game.js` take
 
 ## Architecture
 
-Everything runs in `game.js` as a single `requestAnimationFrame` loop (`loop` → `update(dt)` then `draw()`) operating on module-level mutable state (`ship`, `bullets`, `asteroids`, `particles`, `score`, `lives`, `level`, `state`).
+Everything runs in `game.js` as a single `requestAnimationFrame` loop (`loop` → `update(dt)` then `draw()`) operating on module-level mutable state (`ship`, `bullets`, `asteroids`, `particles`, `powerups`, `score`, `lives`, `level`, `state`).
 
-- **Entity classes** (`Bullet`, `Asteroid`, `Ship`, `Particle`) each own `update(dt)` and `draw()` methods and a `dead` flag; the main loop advances them and filters out dead ones each frame rather than using any entity-management/ECS abstraction.
+- **Entity classes** (`Bullet`, `Asteroid`, `Ship`, `Particle`, `PowerUp`) each own `update(dt)` and `draw()` methods and a `dead` flag; the main loop advances them and filters out dead ones each frame rather than using any entity-management/ECS abstraction.
+- **Triple-shot power-up**: destroying an asteroid has a chance (`dropChance`, starting at 12% and climbing 4pp per non-drop so it's guaranteed to appear eventually) to spawn a `PowerUp` that grants `ship.tripleTimer` (10s of 3-bullet fan shots via `Ship.tryShoot()`) on pickup. It can only be *picked up* once per level (`tripleTaken` flag) — if it expires unclaimed it can drop again within that level. Both `tripleTaken` and `dropChance` reset at the start of each level (`nextLevel()`). The effect is lost on death since `Ship.reset()` zeroes `tripleTimer`.
 - **Game state machine**: the `state` variable is one of `'playing' | 'dead' | 'gameover'`, checked at the top of `update()` to branch behavior (e.g. respawn countdown via `deadTimer`, restart-on-Space in game over).
 - **Toroidal space**: all positions wrap via the `wrap(v, max)` helper — asteroids, bullets, and the ship all reappear on the opposite edge.
 - **Asteroids split recursively**: `Asteroid.split()` produces two smaller asteroids (size 3 → 2 → 1, then destroyed) using the `RADII`/`SPEEDS`/`POINTS` arrays indexed by size.
@@ -29,4 +30,4 @@ Everything runs in `game.js` as a single `requestAnimationFrame` loop (`loop` �
 
 When adding new entity types or behaviors, follow the existing pattern: a class with `update(dt)`/`draw()`/`dead`, pushed into one of the module-level arrays, filtered each frame in `update()`.
 
-Note: the README describes power-ups and a "shooting star" asteroid type — these were removed from the code (see git history) and the README is currently stale on that point.
+Note: the triple-shot power-up described above was reintroduced after having been removed (see git history). The "shooting star" asteroid type mentioned in older README revisions was also removed and has not been brought back.
